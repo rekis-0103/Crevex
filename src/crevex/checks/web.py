@@ -75,14 +75,38 @@ class SensitivePathCheck(BaseCheck):
     name = "Sensitive exposed paths"
     target_kinds = {"web"}
 
-    PATHS = [".env", "config.php", "backup.zip", "db.sql", ".git/HEAD"]
+    PATHS_BY_PROFILE = {
+        "quick": [".env", ".git/HEAD"],
+        "standard": [".env", "config.php", "backup.zip", "db.sql", ".git/HEAD"],
+        "deep": [
+            ".env",
+            ".env.local",
+            ".env.production",
+            ".git/HEAD",
+            ".DS_Store",
+            "backup.sql",
+            "backup.tar.gz",
+            "backup.zip",
+            "config.json",
+            "config.php",
+            "db.sql",
+            "debug.log",
+            "dump.sql",
+            "phpinfo.php",
+            "server-status",
+            "settings.py",
+        ],
+    }
+
+    def paths_for_profile(self) -> list[str]:
+        return self.PATHS_BY_PROFILE.get(self.profile, self.PATHS_BY_PROFILE["standard"])
 
     def run(self, target: ScanTarget) -> Iterable[Finding]:
         if target.kind != "web":
             return []
 
         findings: list[Finding] = []
-        for path in self.PATHS:
+        for path in self.paths_for_profile():
             url = absolute_url(target.display, path)
             response = fetch(url, method="GET", max_body=1024)
             if response.status in {200, 206} and response.body.strip():

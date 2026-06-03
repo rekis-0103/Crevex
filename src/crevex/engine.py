@@ -54,7 +54,7 @@ def run_scan(
             raise ValueError("code path is required for source-code scanning")
         normalized.append(make_code_target(code_path))
 
-    checks = build_checks(scan_type, include=include, exclude=exclude)
+    checks = build_checks(scan_type, profile=profile, include=include, exclude=exclude)
     report.targets = [target.display for target in normalized]
 
     for target in normalized:

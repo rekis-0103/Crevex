@@ -84,6 +84,20 @@ Disable terminal colors:
 crevex scan https://example.com --confirm-authorized --no-color
 ```
 
+Choose scan depth:
+
+```powershell
+crevex scan https://example.com --confirm-authorized --profile quick
+crevex scan https://example.com --confirm-authorized --profile standard
+crevex scan https://example.com --confirm-authorized --profile deep
+```
+
+Profile behavior:
+
+- `quick`: small check set, common web ports, fast source-code checks.
+- `standard`: balanced default for safe everyday scanning.
+- `deep`: broader safe port and sensitive-path coverage.
+
 Scan source code:
 
 ```powershell

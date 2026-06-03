@@ -51,7 +51,39 @@ class TcpPortCheck(BaseCheck):
     name = "TCP port exposure"
     target_kinds = {"host", "web"}
 
-    DEFAULT_PORTS = [21, 22, 25, 80, 443, 3306, 5432, 6379, 8080, 8443]
+    PORTS_BY_PROFILE = {
+        "quick": [80, 443],
+        "standard": [21, 22, 25, 80, 443, 3306, 5432, 6379, 8080, 8443],
+        "deep": [
+            21,
+            22,
+            23,
+            25,
+            53,
+            80,
+            110,
+            143,
+            389,
+            443,
+            445,
+            587,
+            993,
+            995,
+            1433,
+            1521,
+            3306,
+            5432,
+            6379,
+            8000,
+            8080,
+            8081,
+            8443,
+            9000,
+            9200,
+            11211,
+            27017,
+        ],
+    }
 
     RISKY_PORTS = {
         21: "FTP is exposed. Prefer SFTP/SSH and restrict access.",
@@ -60,9 +92,15 @@ class TcpPortCheck(BaseCheck):
         6379: "Redis is exposed. Bind to private interfaces and require authentication where appropriate.",
     }
 
+    def ports_for_target(self, target: ScanTarget) -> list[int]:
+        ports = list(self.PORTS_BY_PROFILE.get(self.profile, self.PORTS_BY_PROFILE["standard"]))
+        if target.port and target.port not in ports:
+            ports.append(target.port)
+        return sorted(ports)
+
     def run(self, target: ScanTarget) -> Iterable[Finding]:
         findings: list[Finding] = []
-        for port in self.DEFAULT_PORTS:
+        for port in self.ports_for_target(target):
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.settimeout(1.0)
                 try:
