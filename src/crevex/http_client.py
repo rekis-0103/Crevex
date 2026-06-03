@@ -5,8 +5,12 @@ import ssl
 from dataclasses import dataclass
 from datetime import datetime
 from email.utils import parsedate_to_datetime
-from http.client import HTTPConnection, HTTPSConnection
+from http.client import BadStatusLine, HTTPConnection, HTTPException, HTTPSConnection, RemoteDisconnected
 from urllib.parse import urljoin, urlparse
+
+
+class HttpProtocolError(ConnectionError):
+    """Raised when a target does not speak the expected HTTP protocol."""
 
 
 @dataclass
@@ -30,12 +34,34 @@ def fetch(url: str, method: str = "GET", timeout: float = 10, max_body: int = 40
     if parsed.query:
         path = f"{path}?{parsed.query}"
 
-    connection.request(method, path, headers={"User-Agent": "crevex/0.1 safe-scanner"})
-    response = connection.getresponse()
-    body = response.read(max_body)
-    headers = {key.lower(): value for key, value in response.getheaders()}
-    connection.close()
-    return HttpResponse(url=url, status=response.status, headers=headers, body=body)
+    try:
+        connection.request(method, path, headers={"User-Agent": "crevex/0.1 safe-scanner"})
+        response = connection.getresponse()
+        body = response.read(max_body)
+        headers = {key.lower(): value for key, value in response.getheaders()}
+        return HttpResponse(url=url, status=response.status, headers=headers, body=body)
+    except BadStatusLine as exc:
+        raise HttpProtocolError(
+            "target did not return a valid HTTP response; the port may belong to a non-HTTP service"
+        ) from exc
+    except RemoteDisconnected as exc:
+        raise HttpProtocolError("target closed the connection before sending an HTTP response") from exc
+    except ssl.SSLError as exc:
+        raise HttpProtocolError("TLS handshake failed; the target may not speak HTTPS on this port") from exc
+    except HTTPException as exc:
+        raise HttpProtocolError(f"HTTP protocol error: {exc}") from exc
+    finally:
+        connection.close()
+
+
+def probe_http_service(url: str, timeout: float = 3) -> tuple[bool, str | None]:
+    try:
+        fetch(url, method="HEAD", timeout=timeout, max_body=0)
+    except HttpProtocolError as exc:
+        return False, str(exc)
+    except OSError as exc:
+        return False, str(exc)
+    return True, None
 
 
 def absolute_url(base: str, path: str) -> str:
