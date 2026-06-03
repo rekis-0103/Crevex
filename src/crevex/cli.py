@@ -9,6 +9,7 @@ from pathlib import Path
 
 from . import __version__
 from .checks import list_checks
+from .config import list_to_csv, load_config
 from .engine import run_scan
 from .reporting import render_html, render_text, report_from_json, report_to_json
 
@@ -80,10 +81,11 @@ def write_or_print(content: str, output: str | None) -> None:
 
 def add_scan_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("targets", nargs="*", help="URL, host, IP, or code path depending on command.")
+    parser.add_argument("--config", help="Path to a Crevex YAML config file.")
     parser.add_argument("--targets-file", help="File containing one target per line.")
     parser.add_argument("--code-path", help="Source-code path for audit mode.")
-    parser.add_argument("--profile", choices=["quick", "standard", "deep"], default="standard")
-    parser.add_argument("--format", choices=["table", "json", "html"], default="table")
+    parser.add_argument("--profile", choices=["quick", "standard", "deep"])
+    parser.add_argument("--format", choices=["table", "json", "html"])
     parser.add_argument("--output", help="Write report to this path.")
     parser.add_argument("--include-check", help="Comma-separated check IDs to include.")
     parser.add_argument("--exclude-check", help="Comma-separated check IDs to exclude.")
@@ -97,6 +99,31 @@ def add_scan_options(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Confirm that you own or are authorized to scan the target.",
     )
+
+
+def apply_config_defaults(args: argparse.Namespace) -> argparse.Namespace:
+    config = load_config(args.config)
+
+    args.targets_file = args.targets_file or config.get("targets_file")
+    args.code_path = args.code_path or config.get("code_path")
+    args.profile = args.profile or config.get("profile") or "standard"
+    args.format = args.format or config.get("format") or "table"
+    args.output = args.output or config.get("output")
+    args.include_check = args.include_check or list_to_csv(config.get("include_check"))
+    args.exclude_check = args.exclude_check or list_to_csv(config.get("exclude_check"))
+    args.no_color = args.no_color or bool(config.get("no_color", False))
+    args.no_spinner = args.no_spinner or bool(config.get("no_spinner", False))
+    args.quiet = args.quiet or bool(config.get("quiet", False))
+    args.verbose = args.verbose or bool(config.get("verbose", False))
+
+    if args.quiet and args.verbose:
+        raise ValueError("quiet and verbose cannot both be enabled")
+    if args.profile not in {"quick", "standard", "deep"}:
+        raise ValueError("profile must be one of: quick, standard, deep")
+    if args.format not in {"table", "json", "html"}:
+        raise ValueError("format must be one of: table, json, html")
+
+    return args
 
 
 def render_scan_output(
@@ -113,6 +140,12 @@ def render_scan_output(
 
 
 def run_scan_command(args: argparse.Namespace, scan_type: str) -> int:
+    try:
+        args = apply_config_defaults(args)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
     if scan_type in {"scan", "audit"} and not args.confirm_authorized:
         print("Refusing active scan without --confirm-authorized.", file=sys.stderr)
         return 2
@@ -237,6 +270,7 @@ def print_shell_help() -> None:
     print("  scan http://127.0.0.1:3000 --confirm-authorized --quiet")
     print("  scan http://127.0.0.1:3000 --confirm-authorized --verbose --no-color")
     print("  scan http://127.0.0.1:3000 --confirm-authorized --no-spinner")
+    print("  scan http://127.0.0.1:3000 --confirm-authorized --config crevex.yml")
     print("  code-scan <project-path>")
     print("  audit http://127.0.0.1:3000 --code-path <project-path> --confirm-authorized")
 

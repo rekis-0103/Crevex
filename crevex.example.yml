@@ -1,0 +1,23 @@
+# Crevex example configuration.
+# Copy this file to crevex.yml and adjust values for your project.
+
+profile: standard
+format: table
+no_color: false
+no_spinner: false
+quiet: false
+verbose: false
+
+# Optional source-code path used by `audit` when --code-path is not provided.
+# code_path: <project-path>
+
+# Optional file with one target per line.
+# targets_file: targets.txt
+
+# Optional check filters.
+# include_check:
+#   - web.security_headers
+#   - host.tcp_ports
+#
+# exclude_check:
+#   - web.sensitive_paths

@@ -98,6 +98,30 @@ Profile behavior:
 - `standard`: balanced default for safe everyday scanning.
 - `deep`: broader safe port and sensitive-path coverage.
 
+Use a config file:
+
+```powershell
+crevex scan https://example.com --confirm-authorized --config crevex.yml
+```
+
+Crevex also reads `crevex.yml` from the current directory automatically when it exists. Use `crevex.example.yml` as a starting point.
+
+Example:
+
+```yaml
+profile: standard
+format: table
+no_color: false
+no_spinner: false
+quiet: false
+verbose: false
+
+exclude_check:
+  - web.sensitive_paths
+```
+
+Authorization is intentionally not read from config. Active scans still require `--confirm-authorized`.
+
 Scan source code:
 
 ```powershell
