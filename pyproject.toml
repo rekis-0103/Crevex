@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crevex"
+version = "0.1.0"
+description = "Safe CLI vulnerability scanner for authorized web, host, and source-code checks."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Crevex" }]
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+crevex = "crevex.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
