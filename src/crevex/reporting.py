@@ -77,9 +77,12 @@ def render_summary(report: ScanReport, color: bool) -> list[str]:
 def render_text(report: ScanReport, color: bool = False, verbosity: str = "normal") -> str:
     title = f"Crevex {report.version} {report.scan_type} report"
     title = colorize(title, TerminalStyle.BOLD, color)
+    duration = report.duration_seconds()
+    duration_text = f"{duration:.2f}s" if duration is not None else "-"
     lines = [
         title,
         f"Profile: {report.profile}",
+        f"Duration: {duration_text}",
         f"Findings: {len(report.findings)} | Errors: {len(report.errors)}",
         "",
         "Targets",
@@ -135,6 +138,8 @@ def render_html(data: dict[str, Any]) -> str:
             "</tr>"
         )
     summary = ", ".join(f"{key}: {value}" for key, value in data.get("summary", {}).items())
+    duration = data.get("duration_seconds")
+    duration_text = f"{duration:.2f}s" if isinstance(duration, (int, float)) else "-"
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -153,6 +158,7 @@ def render_html(data: dict[str, Any]) -> str:
   <div class="meta">
     <p><strong>Scan type:</strong> {escape(data.get("scan_type", ""))}</p>
     <p><strong>Targets:</strong> {escape(", ".join(data.get("targets", [])))}</p>
+    <p><strong>Duration:</strong> {escape(duration_text)}</p>
     <p><strong>Summary:</strong> {escape(summary)}</p>
   </div>
   <table>

@@ -83,6 +83,13 @@ class ScanReport:
         self.finished_at = datetime.now(timezone.utc).isoformat()
         self.findings.sort(key=lambda item: item.sort_key())
 
+    def duration_seconds(self) -> float | None:
+        if not self.finished_at:
+            return None
+        started = datetime.fromisoformat(self.started_at)
+        finished = datetime.fromisoformat(self.finished_at)
+        return max((finished - started).total_seconds(), 0.0)
+
     def summary(self) -> dict[str, int]:
         counts = {severity: 0 for severity in SEVERITY_ORDER}
         for finding in self.findings:
@@ -92,4 +99,5 @@ class ScanReport:
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["summary"] = self.summary()
+        data["duration_seconds"] = self.duration_seconds()
         return data

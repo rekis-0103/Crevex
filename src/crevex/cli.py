@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import shlex
 import sys
+import threading
+import time
 from pathlib import Path
 
 from . import __version__
@@ -20,6 +22,46 @@ class Style:
     YELLOW = "\033[33m"
     RED = "\033[31m"
     MAGENTA = "\033[35m"
+
+
+class LoadingSpinner:
+    FRAMES = ("|", "/", "-", "\\")
+
+    def __init__(self, message: str, enabled: bool = True) -> None:
+        self.message = message
+        self.enabled = enabled
+        self.started_at = 0.0
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def __enter__(self) -> "LoadingSpinner":
+        if not self.enabled:
+            return self
+        self.started_at = time.perf_counter()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        if not self.enabled:
+            return
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=0.5)
+        elapsed = time.perf_counter() - self.started_at
+        sys.stdout.write("\r" + " " * 80 + "\r")
+        sys.stdout.write(f"Finished in {elapsed:.2f}s\n")
+        sys.stdout.flush()
+
+    def _run(self) -> None:
+        index = 0
+        while not self._stop.is_set():
+            elapsed = time.perf_counter() - self.started_at
+            frame = self.FRAMES[index % len(self.FRAMES)]
+            sys.stdout.write(f"\r{frame} {self.message}... {elapsed:.1f}s")
+            sys.stdout.flush()
+            index += 1
+            self._stop.wait(0.1)
 
 
 def comma_set(value: str | None) -> set[str] | None:
@@ -49,6 +91,7 @@ def add_scan_options(parser: argparse.ArgumentParser) -> None:
     verbosity = parser.add_mutually_exclusive_group()
     verbosity.add_argument("--quiet", action="store_true", help="Show a compact terminal report.")
     verbosity.add_argument("--verbose", action="store_true", help="Show extra finding metadata in terminal reports.")
+    parser.add_argument("--no-spinner", action="store_true", help="Disable scan loading animation.")
     parser.add_argument(
         "--confirm-authorized",
         action="store_true",
@@ -74,16 +117,24 @@ def run_scan_command(args: argparse.Namespace, scan_type: str) -> int:
         print("Refusing active scan without --confirm-authorized.", file=sys.stderr)
         return 2
 
+    show_spinner = (
+        args.output is None
+        and args.format == "table"
+        and not args.no_spinner
+        and sys.stdout.isatty()
+    )
+
     try:
-        report = run_scan(
-            targets=args.targets,
-            target_file=args.targets_file,
-            code_path=args.code_path,
-            scan_type=scan_type,
-            profile=args.profile,
-            include=comma_set(args.include_check),
-            exclude=comma_set(args.exclude_check),
-        )
+        with LoadingSpinner(f"Running {scan_type}", enabled=show_spinner):
+            report = run_scan(
+                targets=args.targets,
+                target_file=args.targets_file,
+                code_path=args.code_path,
+                scan_type=scan_type,
+                profile=args.profile,
+                include=comma_set(args.include_check),
+                exclude=comma_set(args.exclude_check),
+            )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -185,6 +236,7 @@ def print_shell_help() -> None:
     print("  scan http://127.0.0.1:3000 --confirm-authorized")
     print("  scan http://127.0.0.1:3000 --confirm-authorized --quiet")
     print("  scan http://127.0.0.1:3000 --confirm-authorized --verbose --no-color")
+    print("  scan http://127.0.0.1:3000 --confirm-authorized --no-spinner")
     print("  code-scan <project-path>")
     print("  audit http://127.0.0.1:3000 --code-path <project-path> --confirm-authorized")
 
