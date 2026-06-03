@@ -1,45 +1,44 @@
 # Crevex
 
-Crevex is a safe CLI vulnerability scanner for authorized targets. It supports:
+<p align="center">
+  <img src="assets/demo.png" alt="Crevex interactive shell demo" width="720">
+</p>
 
-- DAST-style web and host checks for running applications.
-- Source-code checks for common project risks.
-- JSON and HTML reports with actionable remediation guidance.
+Crevex is a safe Python CLI vulnerability scanner for authorized targets. It supports DAST-style web and host checks, source-code checks, an interactive terminal shell, and JSON/HTML reports with actionable remediation guidance.
 
 Crevex is intended only for systems you own or are explicitly authorized to test.
 
+## Features
+
+- Interactive shell mode for running Crevex commands inside the tool.
+- Safe web and host checks for running applications.
+- Source-code checks for common project risks in JavaScript, Python, and PHP projects.
+- Text, JSON, and HTML report output.
+- Findings with evidence, impact, severity, confidence, and remediation guidance.
+- Safe-by-default behavior with explicit authorization required for active scans.
+
 ## Quick Start
+
+Run from source:
 
 ```powershell
 $env:PYTHONPATH="src"
 python -m crevex
-python -m crevex scan https://example.com --confirm-authorized
-python -m crevex code-scan .
-python -m crevex audit https://example.com --code-path . --confirm-authorized --format json --output report.json
-python -m crevex report report.json --format html --output report.html
 ```
 
-Or install it locally:
+Or install locally:
 
 ```powershell
 python -m pip install -e .
 crevex
-crevex checks
 ```
 
 ## Interactive Shell
 
-Run Crevex without arguments to open the interactive terminal shell:
+Run Crevex without arguments to open the interactive shell:
 
 ```powershell
 crevex
-```
-
-Or from source:
-
-```powershell
-$env:PYTHONPATH="src"
-python -m crevex
 ```
 
 Inside the shell, run commands without typing `crevex` again:
@@ -52,12 +51,51 @@ crevex > audit http://127.0.0.1:3000 --code-path <project-path> --confirm-author
 crevex > exit
 ```
 
+## CLI Usage
+
+List available checks:
+
+```powershell
+crevex checks
+```
+
+Scan a running web application or host:
+
+```powershell
+crevex scan https://example.com --confirm-authorized
+```
+
+Scan source code:
+
+```powershell
+crevex code-scan <project-path>
+```
+
+Run a combined DAST and source-code audit:
+
+```powershell
+crevex audit https://example.com --code-path <project-path> --confirm-authorized
+```
+
+Write a JSON report:
+
+```powershell
+crevex scan https://example.com --confirm-authorized --format json --output report.json
+```
+
+Render a saved JSON report as HTML:
+
+```powershell
+crevex report report.json --format html --output report.html
+```
+
 ## Current Checks
 
 DAST checks:
 
 - DNS resolution summary.
 - Safe TCP port exposure check on a small default port list.
+- HTTP service detection before web-only checks.
 - HTTP security headers.
 - Cookie security flags.
 - Common sensitive path exposure using safe GET requests.
@@ -69,8 +107,12 @@ Source-code checks:
 - Possible hardcoded secrets.
 - Risky source patterns for SQL string building, debug mode, unsafe redirects, and command execution from input.
 
-Every finding includes evidence, impact, severity, confidence, and an actionable recommendation.
-
 ## Safety
 
 The default scanner performs low-risk checks only. It does not exploit targets, brute-force credentials, or run destructive payloads.
+
+Active scans require explicit authorization confirmation:
+
+```powershell
+crevex scan https://example.com --confirm-authorized
+```
