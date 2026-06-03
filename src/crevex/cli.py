@@ -45,6 +45,10 @@ def add_scan_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--output", help="Write report to this path.")
     parser.add_argument("--include-check", help="Comma-separated check IDs to include.")
     parser.add_argument("--exclude-check", help="Comma-separated check IDs to exclude.")
+    parser.add_argument("--no-color", action="store_true", help="Disable colored terminal output.")
+    verbosity = parser.add_mutually_exclusive_group()
+    verbosity.add_argument("--quiet", action="store_true", help="Show a compact terminal report.")
+    verbosity.add_argument("--verbose", action="store_true", help="Show extra finding metadata in terminal reports.")
     parser.add_argument(
         "--confirm-authorized",
         action="store_true",
@@ -52,12 +56,17 @@ def add_scan_options(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def render_scan_output(report, output_format: str) -> str:
+def render_scan_output(
+    report,
+    output_format: str,
+    color: bool = False,
+    verbosity: str = "normal",
+) -> str:
     if output_format == "json":
         return report_to_json(report)
     if output_format == "html":
         return render_html(report.to_dict())
-    return render_text(report)
+    return render_text(report, color=color, verbosity=verbosity)
 
 
 def run_scan_command(args: argparse.Namespace, scan_type: str) -> int:
@@ -79,7 +88,17 @@ def run_scan_command(args: argparse.Namespace, scan_type: str) -> int:
         print(str(exc), file=sys.stderr)
         return 2
 
-    write_or_print(render_scan_output(report, args.format), args.output)
+    use_color = (
+        args.output is None
+        and args.format == "table"
+        and not args.no_color
+        and sys.stdout.isatty()
+    )
+    verbosity = "verbose" if args.verbose else "quiet" if args.quiet else "normal"
+    write_or_print(
+        render_scan_output(report, args.format, color=use_color, verbosity=verbosity),
+        args.output,
+    )
     return 1 if any(finding.severity in {"high", "critical"} for finding in report.findings) else 0
 
 
@@ -164,6 +183,8 @@ def print_shell_help() -> None:
     print("")
     print(f"{Style.BOLD}Examples{Style.RESET}")
     print("  scan http://127.0.0.1:3000 --confirm-authorized")
+    print("  scan http://127.0.0.1:3000 --confirm-authorized --quiet")
+    print("  scan http://127.0.0.1:3000 --confirm-authorized --verbose --no-color")
     print("  code-scan <project-path>")
     print("  audit http://127.0.0.1:3000 --code-path <project-path> --confirm-authorized")
 

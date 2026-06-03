@@ -1,11 +1,32 @@
 from __future__ import annotations
 
 import json
+import textwrap
 from html import escape
 from pathlib import Path
 from typing import Any
 
 from .models import Finding, ScanReport
+
+
+class TerminalStyle:
+    RESET = "\033[0m"
+    BOLD = "\033[1m"
+    DIM = "\033[2m"
+    CYAN = "\033[36m"
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    RED = "\033[31m"
+    MAGENTA = "\033[35m"
+
+
+SEVERITY_STYLES = {
+    "critical": TerminalStyle.MAGENTA,
+    "high": TerminalStyle.RED,
+    "medium": TerminalStyle.YELLOW,
+    "low": TerminalStyle.CYAN,
+    "info": TerminalStyle.GREEN,
+}
 
 
 def report_to_json(report: ScanReport) -> str:
@@ -16,32 +37,85 @@ def report_from_json(path: str) -> dict[str, Any]:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
-def render_text(report: ScanReport) -> str:
+def colorize(text: str, style: str, enabled: bool) -> str:
+    if not enabled:
+        return text
+    return f"{style}{text}{TerminalStyle.RESET}"
+
+
+def severity_label(severity: str, color: bool) -> str:
+    label = severity.upper().ljust(8)
+    return colorize(label, SEVERITY_STYLES.get(severity, ""), color)
+
+
+def wrap_field(label: str, value: str, width: int = 88) -> list[str]:
+    prefix = f"  {label}: "
+    wrapped = textwrap.wrap(
+        value or "-",
+        width=max(width - len(prefix), 32),
+        break_long_words=False,
+        break_on_hyphens=False,
+    )
+    if not wrapped:
+        return [prefix + "-"]
+    lines = [prefix + wrapped[0]]
+    indent = " " * len(prefix)
+    lines.extend(indent + line for line in wrapped[1:])
+    return lines
+
+
+def render_summary(report: ScanReport, color: bool) -> list[str]:
+    summary = report.summary()
+    labels = ["critical", "high", "medium", "low", "info"]
+    rows = []
+    for severity in labels:
+        count = summary.get(severity, 0)
+        rows.append(f"{severity_label(severity, color)} {count}")
+    return ["Severity Summary", "  " + "  ".join(rows)]
+
+
+def render_text(report: ScanReport, color: bool = False, verbosity: str = "normal") -> str:
+    title = f"Crevex {report.version} {report.scan_type} report"
+    title = colorize(title, TerminalStyle.BOLD, color)
     lines = [
-        f"Crevex {report.version} {report.scan_type} report",
-        f"Targets: {', '.join(report.targets) if report.targets else '-'}",
-        "Summary: "
-        + ", ".join(f"{severity}={count}" for severity, count in report.summary().items()),
+        title,
+        f"Profile: {report.profile}",
+        f"Findings: {len(report.findings)} | Errors: {len(report.errors)}",
         "",
+        "Targets",
     ]
+    lines.extend(f"  - {target}" for target in report.targets)
+    lines.extend(["", *render_summary(report, color), "", "Findings"])
+
     if not report.findings:
-        lines.append("No findings.")
-    for finding in report.findings:
-        lines.extend(
-            [
-                f"[{finding.severity.upper()}] {finding.title}",
-                f"  Target: {finding.target}",
-                f"  Location: {finding.location or '-'}",
-                f"  Confidence: {finding.confidence}",
-                f"  Evidence: {finding.evidence}",
-                f"  Recommendation: {finding.recommendation}",
-                "",
-            ]
-        )
+        lines.append("  No findings.")
+    for index, finding in enumerate(report.findings, start=1):
+        label = f"[{finding.severity.upper()}]"
+        colored_label = colorize(label, SEVERITY_STYLES.get(finding.severity, ""), color)
+        lines.append(f"  {index}. {colored_label} {finding.title}")
+        if verbosity == "quiet":
+            lines.extend(wrap_field("Target", finding.target))
+            lines.append("")
+            continue
+
+        lines.extend(wrap_field("Target", finding.target))
+        if finding.location:
+            lines.extend(wrap_field("Location", finding.location))
+        if verbosity == "verbose":
+            lines.extend(wrap_field("Check", finding.check_id))
+            lines.extend(wrap_field("Finding ID", finding.id))
+        lines.extend(wrap_field("Confidence", finding.confidence))
+        lines.extend(wrap_field("Evidence", finding.evidence))
+        lines.extend(wrap_field("Impact", finding.impact))
+        lines.extend(wrap_field("Fix", finding.recommendation))
+        if verbosity == "verbose" and finding.references:
+            lines.extend(wrap_field("References", ", ".join(finding.references)))
+        lines.append("")
+
     if report.errors:
-        lines.append("Errors:")
+        lines.append("Errors")
         for error in report.errors:
-            lines.append(f"  {error.target} {error.check_id}: {error.message}")
+            lines.append(f"  - {error.target} [{error.check_id}] {error.message}")
     return "\n".join(lines)
 
 

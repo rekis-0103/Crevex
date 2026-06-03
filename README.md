@@ -14,6 +14,7 @@ Crevex is intended only for systems you own or are explicitly authorized to test
 - Safe web and host checks for running applications.
 - Source-code checks for common project risks in JavaScript, Python, and PHP projects.
 - Text, JSON, and HTML report output.
+- Terminal output controls with `--quiet`, `--verbose`, and `--no-color`.
 - Findings with evidence, impact, severity, confidence, and remediation guidance.
 - Safe-by-default behavior with explicit authorization required for active scans.
 
@@ -63,6 +64,24 @@ Scan a running web application or host:
 
 ```powershell
 crevex scan https://example.com --confirm-authorized
+```
+
+Use compact output:
+
+```powershell
+crevex scan https://example.com --confirm-authorized --quiet
+```
+
+Show extra finding metadata:
+
+```powershell
+crevex scan https://example.com --confirm-authorized --verbose
+```
+
+Disable terminal colors:
+
+```powershell
+crevex scan https://example.com --confirm-authorized --no-color
 ```
 
 Scan source code:
