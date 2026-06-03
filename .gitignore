@@ -19,3 +19,5 @@ dist/
 *.tmp
 crevex-report.json
 crevex-report.html
+
+AGENTS.md
