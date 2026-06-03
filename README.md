@@ -46,9 +46,9 @@ Inside the shell, run commands without typing `crevex` again:
 
 ```text
 crevex > checks
-crevex > scan http://localhost:3000 --confirm-authorized
-crevex > code-scan C:\ai-proj\my-old-project
-crevex > audit http://localhost:3000 --code-path C:\ai-proj\my-old-project --confirm-authorized
+crevex > scan http://127.0.0.1:3000 --confirm-authorized
+crevex > code-scan <project-path>
+crevex > audit http://127.0.0.1:3000 --code-path <project-path> --confirm-authorized
 crevex > exit
 ```
 

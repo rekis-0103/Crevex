@@ -163,9 +163,9 @@ def print_shell_help() -> None:
     print("  exit")
     print("")
     print(f"{Style.BOLD}Examples{Style.RESET}")
-    print("  scan http://localhost:3000 --confirm-authorized")
-    print("  code-scan C:\\ai-proj\\my-old-project")
-    print("  audit http://localhost:3000 --code-path C:\\ai-proj\\my-old-project --confirm-authorized")
+    print("  scan http://127.0.0.1:3000 --confirm-authorized")
+    print("  code-scan <project-path>")
+    print("  audit http://127.0.0.1:3000 --code-path <project-path> --confirm-authorized")
 
 
 def run_shell_command(line: str) -> int:
