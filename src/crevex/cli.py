@@ -31,6 +31,7 @@ class LoadingSpinner:
     def __init__(self, message: str, enabled: bool = True) -> None:
         self.message = message
         self.enabled = enabled
+        self.dynamic = False
         self.started_at = 0.0
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -39,18 +40,24 @@ class LoadingSpinner:
         if not self.enabled:
             return self
         self.started_at = time.perf_counter()
-        self._thread = threading.Thread(target=self._run, daemon=True)
-        self._thread.start()
+        self.dynamic = sys.stdout.isatty()
+        if self.dynamic:
+            self._thread = threading.Thread(target=self._run, daemon=True)
+            self._thread.start()
+        else:
+            sys.stdout.write(f"{self.message}...\n")
+            sys.stdout.flush()
         return self
 
     def __exit__(self, exc_type, exc, traceback) -> None:
         if not self.enabled:
             return
-        self._stop.set()
-        if self._thread:
-            self._thread.join(timeout=0.5)
         elapsed = time.perf_counter() - self.started_at
-        sys.stdout.write("\r" + " " * 80 + "\r")
+        if self.dynamic:
+            self._stop.set()
+            if self._thread:
+                self._thread.join(timeout=0.5)
+            sys.stdout.write("\r" + " " * 80 + "\r")
         sys.stdout.write(f"Finished in {elapsed:.2f}s\n")
         sys.stdout.flush()
 
@@ -154,7 +161,6 @@ def run_scan_command(args: argparse.Namespace, scan_type: str) -> int:
         args.output is None
         and args.format == "table"
         and not args.no_spinner
-        and sys.stdout.isatty()
     )
 
     try:

@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from crevex.cli import apply_config_defaults, run_shell_command
+from crevex.cli import LoadingSpinner, apply_config_defaults, run_shell_command
 
 
 class CliShellTest(unittest.TestCase):
@@ -27,6 +27,17 @@ class CliShellTest(unittest.TestCase):
 
     def test_shell_exit_command(self):
         self.assertEqual(run_shell_command("exit"), -1)
+
+    def test_loading_spinner_writes_static_status_when_not_tty(self):
+        output = io.StringIO()
+
+        with contextlib.redirect_stdout(output):
+            with LoadingSpinner("Running scan", enabled=True):
+                pass
+
+        rendered = output.getvalue()
+        self.assertIn("Running scan...", rendered)
+        self.assertIn("Finished in", rendered)
 
     def test_apply_config_defaults_keeps_authorization_explicit(self):
         with tempfile.TemporaryDirectory() as tmp:

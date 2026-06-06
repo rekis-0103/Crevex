@@ -15,6 +15,7 @@ Crevex is intended only for systems you own or are explicitly authorized to test
 - Source-code checks for common project risks in JavaScript, Python, and PHP projects.
 - Text, JSON, and HTML report output.
 - Terminal output controls with `--quiet`, `--verbose`, and `--no-color`.
+- Loading indicator with elapsed time while scans are running.
 - Findings with evidence, impact, severity, confidence, and remediation guidance.
 - Safe-by-default behavior with explicit authorization required for active scans.
 
@@ -82,6 +83,12 @@ Disable terminal colors:
 
 ```powershell
 crevex scan https://example.com --confirm-authorized --no-color
+```
+
+Disable the loading indicator:
+
+```powershell
+crevex scan https://example.com --confirm-authorized --no-spinner
 ```
 
 Choose scan depth:
